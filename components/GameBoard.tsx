@@ -6,6 +6,7 @@ import Card from './Card';
 import Confetti from 'react-confetti';
 import { shuffleArray } from '@/utils/shuffle';
 import { useWindowSize } from '@/hooks/useWindowSize';
+import ScoresTable from './ScoreTables';
 
 const generateCards = (): string[] => {
   return [
@@ -37,6 +38,7 @@ const GameBoard: React.FC = () => {
   const [attempts, setAttempts] = useState(0);
   const [gameWon, setGameWon] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true); // Nuevo estado
+  const [showScores, setShowScores] = useState(false);
   const { width, height } = useWindowSize();
 
   const getGridDimensions = useCallback(() => {
@@ -115,27 +117,55 @@ const GameBoard: React.FC = () => {
   const { cols, rows } = getGridDimensions();
 
   return (
-    <div className="flex flex-col items-center justify-between h-screen p-4">
-      <h1 className="text-2xl font-bold mb-4">Memoria de Heroes</h1>
-      <div className={`grid gap-2 w-full flex-grow`} style={{
-        gridTemplateColumns: `repeat(${cols}, 1fr)`,
-        gridTemplateRows: `repeat(${rows}, 1fr)`
-      }}>
-        {cards.map((card, index) => (
-          <Card
-            key={index}
-            card={card}
-            index={index}
-            isFlipped={flippedCards.includes(index) || matchedCards.includes(index)}
-            onClick={() => handleFlip(index)}
-          />
-        ))}
-      </div>
+    <div className="flex flex-col items-center justify-between min-h-screen bg-gray-900 text-white p-4">
+      <header className="w-full flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold text-blue-400">Memoria de Héroes</h1>
+        <div>
+          <button
+            onClick={() => setShowScores(!showScores)}
+            className="mr-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            {showScores ? 'Ocultar Récords' : 'Ver Récords'}
+          </button>
+          <button
+            onClick={resetGame}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+          >
+            Reiniciar
+          </button>
+        </div>
+      </header>
+
+      <main className="flex-grow w-full flex justify-center items-center">
+        {showScores ? (
+          <ScoresTable />
+        ) : (
+          <div
+            className={`grid gap-2 w-full max-w-4xl`}
+            style={{
+              gridTemplateColumns: `repeat(${cols}, 1fr)`,
+              gridTemplateRows: `repeat(${rows}, 1fr)`,
+              aspectRatio: `${cols} / ${rows}`
+            }}
+          >
+            {cards.map((card, index) => (
+              <Card
+                key={index}
+                card={card}
+                index={index}
+                isFlipped={flippedCards.includes(index) || matchedCards.includes(index)}
+                onClick={() => handleFlip(index)}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      <footer className="w-full text-center mt-4">
+        <p className="text-xl">Intentos: <span className="font-bold text-yellow-400">{attempts}</span></p>
+      </footer>
+
       {gameWon && <Confetti />}
-      <div className="mt-4 flex justify-between items-center w-full">
-        <p>Intentos: {attempts}</p>
-        <button onClick={resetGame} className="px-4 py-2 bg-blue-500 text-white rounded">Reiniciar</button>
-      </div>
     </div>
   );
 };
