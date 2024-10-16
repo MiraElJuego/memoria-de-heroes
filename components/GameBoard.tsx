@@ -1,7 +1,7 @@
 'use client';
 // components/GameBoard.tsx
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Card from './Card';
 import dynamic from 'next/dynamic';
 import { shuffleArray } from '@/utils/shuffle';
@@ -41,34 +41,28 @@ const GameBoard: React.FC = () => {
   const [gameWon, setGameWon] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true); // Nuevo estado
   const [showScores, setShowScores] = useState(false);
-  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+  const [gridDimensions, setGridDimensions] = useState({ cols: 6, rows: 6 });
+
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const previousDimensionsRef = useRef({ width: 0, height: 0 });
 
   const getGridDimensions = useCallback(() => {
-    const { width, height } = windowSize;
-    console.log('Window size:', width, height);
-    if (width && height) {
-      if (width < height) { // Vertical orientation
-        if (width < 768) return { cols: 4, rows: 9 }; // Mobile
-        if (width < 1024) return { cols: 6, rows: 6 }; // Tablet
-        return { cols: 6, rows: 6 }; // Desktop
-      } else { // Horizontal orientation
-        if (height < 768) return { cols: 9, rows: 4 }; // Mobile
-        if (height < 1024) return { cols: 6, rows: 6 }; // Tablet
-        return { cols: 6, rows: 6 }; // Desktop
+    if (typeof window !== 'undefined') {
+      const { innerWidth: width, innerHeight: height } = window;
+      console.log('Window size:', width, height);
+      if (width && height) {
+        if (width < height) { // Vertical orientation
+          if (width < 768) return { cols: 4, rows: 9 }; // Mobile
+          if (width < 1024) return { cols: 6, rows: 6 }; // Tablet
+          return { cols: 6, rows: 6 }; // Desktop
+        } else { // Horizontal orientation
+          if (height < 768) return { cols: 9, rows: 4 }; // Mobile
+          if (height < 1024) return { cols: 6, rows: 6 }; // Tablet
+          return { cols: 6, rows: 6 }; // Desktop
+        }
       }
     }
     return { cols: 6, rows: 6 }; // Default
-  }, [windowSize]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    };
-
-    handleResize();
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const initializeCards = useCallback(() => {
@@ -79,6 +73,36 @@ const GameBoard: React.FC = () => {
     const shuffledCards = shuffleArray([...initialCards, ...initialCards]).slice(0, totalCards);
     setCards(shuffledCards);
     setTimeout(() => setIsInitializing(false), 500); // Finalizar la inicialización después de 500ms
+  }, [getGridDimensions]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+
+      resizeTimeoutRef.current = setTimeout(() => {
+        const { innerWidth: width, innerHeight: height } = window;
+        const { width: prevWidth, height: prevHeight } = previousDimensionsRef.current;
+
+        // Solo actualiza si hay un cambio significativo en las dimensiones
+        if (Math.abs(width - prevWidth) > 50 || Math.abs(height - prevHeight) > 50) {
+          const newDimensions = getGridDimensions();
+          setGridDimensions(newDimensions);
+          previousDimensionsRef.current = { width, height };
+        }
+      }, 300); // Debounce de 300ms
+    };
+
+    handleResize(); // Llamada inicial
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+    };
   }, [getGridDimensions]);
 
   useEffect(() => {
@@ -129,8 +153,6 @@ const GameBoard: React.FC = () => {
     localStorage.setItem('memory-game-scores', JSON.stringify(currentScores));
   };
 
-  const { cols, rows } = getGridDimensions();
-
   return (
     <div className="flex flex-col items-center justify-between min-h-screen bg-gray-900 text-white p-4">
       <header className="w-full flex justify-between items-center mb-4">
@@ -158,9 +180,9 @@ const GameBoard: React.FC = () => {
           <div
             className={`grid gap-2 w-full max-w-4xl`}
             style={{
-              gridTemplateColumns: `repeat(${cols}, 1fr)`,
-              gridTemplateRows: `repeat(${rows}, 1fr)`,
-              aspectRatio: `${cols} / ${rows}`
+              gridTemplateColumns: `repeat(${gridDimensions.cols}, 1fr)`,
+              gridTemplateRows: `repeat(${gridDimensions.rows}, 1fr)`,
+              aspectRatio: `${gridDimensions.cols} / ${gridDimensions.rows}`
             }}
           >
             {cards.map((card, index) => (
