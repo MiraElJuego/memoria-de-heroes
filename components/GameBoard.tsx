@@ -3,10 +3,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Card from './Card';
-import Confetti from 'react-confetti';
+import dynamic from 'next/dynamic';
 import { shuffleArray } from '@/utils/shuffle';
-import { useWindowSize } from '@/hooks/useWindowSize';
 import ScoresTable from './ScoreTables';
+
+// Importación dinámica de Confetti para evitar problemas de SSR
+const Confetti = dynamic(() => import('react-confetti'), { ssr: false });
 
 const generateCards = (): string[] => {
   return [
@@ -39,22 +41,35 @@ const GameBoard: React.FC = () => {
   const [gameWon, setGameWon] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true); // Nuevo estado
   const [showScores, setShowScores] = useState(false);
-  const { width, height } = useWindowSize();
+  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
 
   const getGridDimensions = useCallback(() => {
+    const { width, height } = windowSize;
+    console.log('Window size:', width, height);
     if (width && height) {
       if (width < height) { // Vertical orientation
-        if (width < 768) return { cols: 4, rows: 6 }; // Mobile
-        if (width < 1024) return { cols: 8, rows: 8 }; // Tablet
-        return { cols: 9, rows: 9 }; // Desktop
+        if (width < 768) return { cols: 4, rows: 9 }; // Mobile
+        if (width < 1024) return { cols: 6, rows: 6 }; // Tablet
+        return { cols: 6, rows: 6 }; // Desktop
       } else { // Horizontal orientation
-        if (height < 768) return { cols: 6, rows: 4 }; // Mobile
-        if (height < 1024) return { cols: 8, rows: 8 }; // Tablet
-        return { cols: 9, rows: 9 }; // Desktop
+        if (height < 768) return { cols: 9, rows: 4 }; // Mobile
+        if (height < 1024) return { cols: 6, rows: 6 }; // Tablet
+        return { cols: 6, rows: 6 }; // Desktop
       }
     }
     return { cols: 6, rows: 6 }; // Default
-  }, [width, height]);
+  }, [windowSize]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const initializeCards = useCallback(() => {
     setIsInitializing(true); // Iniciar la inicialización

@@ -12,7 +12,7 @@ const Card: React.FC<CardProps> = ({ card, index, isFlipped, onClick }) => {
   console.log('Card rendered', index);
   return (
     <motion.div
-      className="card w-full h-full cursor-pointer"
+      className="card w-full h-full cursor-pointer mx-auto"
       onClick={onClick}
       animate={{ rotateY: isFlipped ? 0 : 180 }}
       transition={{ duration: 0.6 }}
